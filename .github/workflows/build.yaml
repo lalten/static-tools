@@ -69,4 +69,4 @@ jobs:
 
     - name: Upload to releases
       # if: github.event_name != 'pull_request' && github.ref_name == 'master'
-      run: gh release create --target HEAD --prerelease --title "Build $(date --utc +%Y-%m-%d)-$(git rev-parse --short HEAD)" --files ./out/*
+      run: gh release create --target HEAD --prerelease --title "Build $(date --utc +%Y-%m-%d)-$(git rev-parse --short HEAD)" ./out/*
