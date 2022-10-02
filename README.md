@@ -9,11 +9,9 @@ Building static binaries of some tools using an [Alpine Linux](https://alpinelin
 
 ## Building locally
 
-Binaries are provided on GitHub Releases. Should you prefer to build locally or on GitHub Codespaces, the following will build the contents of this repository in an Alpine container:
-
+Binaries are provided on GitHub Releases. To build the runtime yourself, run:
 ```
-export ARCHITECTURE=x86_64
-./chroot_build.sh
+docker run -it --rm --volume `pwd`:/workdir alpine:latest /workdir/build.sh
 ```
 
 This whole process takes only a few seconds on GitHub Codespaces.
