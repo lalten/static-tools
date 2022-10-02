@@ -37,12 +37,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Get git hash
-      run: |
-        VERSION="$(date --utc +%Y-%m-%d)-$(git rev-parse --short HEAD)"
-        echo -n "https://github.com/${GITHUB_REPOSITORY}/releases/tag/build-${VERSION}" > src/runtime/version
-        echo "${VERSION}" > tag.txt
-
     - name: Build (x86)
       if: contains(matrix.qemu_arch, 'x86')
       env:
@@ -59,7 +53,6 @@ jobs:
           ARCHITECTURE: ${{ matrix.appimage_arch }}
         dockerRunArgs: |
           --volume "${PWD}/out:/out"
-          --volume "${PWD}/src:/src"
         run: ./build.sh
 
     - name: Upload Build Artifacts
@@ -71,7 +64,7 @@ jobs:
     - name: Create Release
       if: github.event_name != 'pull_request' && github.ref_name == 'master'
       run: |
-        VERSION="$(cat tag.txt)"
+        VERSION="$(date --utc +%Y-%m-%d)-$(git rev-parse --short HEAD)"
         TAG="build-${VERSION}"
         if gh release view "${TAG}" > /dev/null; then
           gh release upload  "${TAG}" out/*
