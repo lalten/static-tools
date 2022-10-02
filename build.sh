@@ -7,12 +7,17 @@ if ! command -v apk; then
 	exit 1
 fi
 
+cd "$(dirname "$0")"
+
+mkdir -p build && cd build
+
 apk update
 apk add alpine-sdk util-linux strace file autoconf automake libtool
 
 # Build static patchelf
 wget https://github.com/NixOS/patchelf/archive/0.9.tar.gz # 0.10 cripples my files, puts XXXXX inside
 tar xf 0.9.tar.gz
+rm 0.9.tar.gz
 cd patchelf-*/
 ./bootstrap.sh
 ./configure --prefix=/usr CFLAGS=-no-pie LDFLAGS=-static
@@ -27,6 +32,7 @@ cd -
 apk add glib-dev glib-static
 wget http://zsync.moria.org.uk/download/zsync-0.6.2.tar.bz2
 tar xf zsync-*.tar.bz2
+rm zsync-*.tar.bz2
 cd zsync-*/
 find . -type f -exec sed -i -e 's|off_t|size_t|g' {} \;
 ./configure CFLAGS=-no-pie LDFLAGS=-static --build=$(arch)-unknown-linux-gnu
@@ -39,6 +45,7 @@ cd -
 apk add zlib-dev zlib-static zstd-dev zstd-static
 wget -O squashfs-tools.tar.gz https://github.com/plougher/squashfs-tools/archive/refs/tags/4.5.1.tar.gz
 tar xf squashfs-tools.tar.gz
+rm squashfs-tools.tar.gz
 cd squashfs-tools-*/squashfs-tools
 sed -i -e 's|#ZSTD_SUPPORT = 1|ZSTD_SUPPORT = 1|g' Makefile
 make -j$(nproc) LDFLAGS=-static
@@ -50,6 +57,7 @@ cd -
 # apk add glib-static glib-dev
 wget -c https://www.freedesktop.org/software/desktop-file-utils/releases/desktop-file-utils-0.15.tar.gz
 tar xf desktop-file-utils-*.tar.gz
+rm desktop-file-utils-*.tar.gz
 cd desktop-file-utils-*/
 # The next 2 lines are a workaround for: checking build system type... ./config.guess: unable to guess system type
 wget 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' -O config.guess
@@ -69,6 +77,7 @@ apk add glib-static meson libxml2-dev yaml-dev yaml-static gperf
 # Compile liblmdb from source as Alpine only ship it as a .so
 wget https://git.openldap.org/openldap/openldap/-/archive/LMDB_0.9.29/openldap-LMDB_0.9.29.tar.gz
 tar xf openldap-LMDB_*.tar.gz
+rm openldap-LMDB_*.tar.gz
 cd openldap-LMDB_*/libraries/liblmdb
 make liblmdb.a
 install -D -m 644 liblmdb.a /usr/local/lib/liblmdb.a
@@ -76,6 +85,7 @@ install -D -m 644 lmdb.h /usr/local/include/lmdb.h
 cd -
 wget -O appstream.tar.gz https://github.com/ximion/appstream/archive/v0.12.9.tar.gz
 tar xf appstream.tar.gz
+rm appstream.tar.gz
 cd appstream-*/
 # Ask for static dependencies
 sed -i -E -e "s|(dependency\('.*')|\1, static: true|g" meson.build
@@ -94,6 +104,7 @@ cd -
 apk add zlib-dev zlib-static bzip2-dev bzip2-static xz-dev
 wget https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz
 tar xf libarchive-*.tar.gz
+rm libarchive-*.tar.gz
 cd libarchive-*/
 ./configure --disable-shared --enable-bsdtar=static --disable-bsdcat --disable-bsdcpio --with-zlib --without-bz2lib --disable-maintainer-mode --disable-dependency-tracking CFLAGS=-no-pie LDFLAGS=-static
 make -j$(nproc)
@@ -101,13 +112,19 @@ gcc -static -o bsdtar tar/bsdtar-bsdtar.o tar/bsdtar-cmdline.o tar/bsdtar-creati
 strip bsdtar
 cd -
 
+# Use the same architecture names as https://github.com/AppImage/AppImageKit/releases/
+appimage_arch="$(apk --print-arch)"
+appimage_arch="${appimage_arch/armv*/armhf}" # replaces "armv7l" with "armhf"
+if [ "$appimage_arch" = "x86" ]; then appimage_arch=i686; fi
+
+cd ..
 mkdir -p out
-cp patchelf-*/patchelf out/patchelf-$ARCHITECTURE
-cp zsync-*/zsyncmake out/zsyncmake-$ARCHITECTURE
-cp squashfs-tools-*/squashfs-tools/mksquashfs out/mksquashfs-$ARCHITECTURE
-cp squashfs-tools-*/squashfs-tools/unsquashfs out/unsquashfs-$ARCHITECTURE
-cp libarchive-*/bsdtar out/bsdtar-$ARCHITECTURE
-cp desktop-file-utils-*/src/desktop-file-install out/desktop-file-install-$ARCHITECTURE
-cp desktop-file-utils-*/src/desktop-file-validate out/desktop-file-validate-$ARCHITECTURE
-cp desktop-file-utils-*/src/update-desktop-database out/update-desktop-database-$ARCHITECTURE
-cp appstream-*/prefix/bin/appstreamcli out/appstreamcli-$ARCHITECTURE
+cp build/patchelf-*/patchelf "out/patchelf-${appimage_arch}"
+cp build/zsync-*/zsyncmake "out/zsyncmake-${appimage_arch}"
+cp build/squashfs-tools-*/squashfs-tools/mksquashfs "out/mksquashfs-${appimage_arch}"
+cp build/squashfs-tools-*/squashfs-tools/unsquashfs "out/unsquashfs-${appimage_arch}"
+cp build/libarchive-*/bsdtar "out/bsdtar-${appimage_arch}"
+cp build/desktop-file-utils-*/src/desktop-file-install "out/desktop-file-install-${appimage_arch}"
+cp build/desktop-file-utils-*/src/desktop-file-validate "out/desktop-file-validate-${appimage_arch}"
+cp build/desktop-file-utils-*/src/update-desktop-database "out/update-desktop-database-${appimage_arch}"
+cp build/appstream-*/prefix/bin/appstreamcli "out/appstreamcli-${appimage_arch}"
